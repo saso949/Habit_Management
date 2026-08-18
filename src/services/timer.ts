@@ -68,15 +68,21 @@ export class FocusTimerService {
     this.isBreakMode = false;
     this.breakEndTimestampMs = null;
     this.isBreakFinishedAlerting = false;
+    this.isAlerting = false; // Reset alerting state when a new task starts
+
+    NotificationService.cancelScheduledNotification(this.activeTask.id);
 
     if (!this.activeTask.actual_start_at) {
       this.activeTask.actual_start_at = new Date().toISOString();
-      // Calculate delay if it was a scheduled task
+      // Calculate delay if it was a scheduled task (Apply 10-minute grace period)
       if (this.activeTask.type === 'scheduled') {
         const scheduledStartMs = new Date(this.activeTask.scheduled_start_at).getTime();
         const actualStartMs = new Date(this.activeTask.actual_start_at).getTime();
-        if (actualStartMs > scheduledStartMs) {
-          const delayMin = Math.floor((actualStartMs - scheduledStartMs) / (60 * 1000));
+        const delayMs = actualStartMs - scheduledStartMs;
+        const gracePeriodMs = 10 * 60 * 1000;
+        
+        if (delayMs > gracePeriodMs) {
+          const delayMin = Math.floor((delayMs - gracePeriodMs) / (60 * 1000));
           this.activeTask.sabori_minutes = (this.activeTask.sabori_minutes || 0) + delayMin;
         }
       }
@@ -112,6 +118,7 @@ export class FocusTimerService {
       this.isBreakMode = false;
       this.breakEndTimestampMs = null;
       this.isBreakFinishedAlerting = false;
+      this.isAlerting = false;
 
       await WakeLockService.requestWakeLock();
       this.startLoop();
@@ -337,6 +344,12 @@ export class FocusTimerService {
     // Check if scheduled end time reached and notify once
     if (isExpired && !this.isAlerting && !this.isBreakMode && !this.hasNotifiedExpiry) {
       this.hasNotifiedExpiry = true;
+      SoundService.playCheckinAlarm(); // Play intense alarm to notify session end
+      HapticService.triggerCheckinAlert();
+      NotificationService.sendNotification('✅【時間終了】セッションの予定時間が終了しました', {
+        body: `「${this.activeTask.title}」の予約時間が終了しました。タスクを完了するか、時間を延長してください。`,
+        requireInteraction: true,
+      });
       this.expiredListeners.forEach((cb) => cb(this.activeTask!));
     }
   }
@@ -402,6 +415,9 @@ export class FocusTimerService {
     this.baseSaboriMinutes += this.currentAlertOverdueMinutes;
     this.activeTask.sabori_minutes = this.baseSaboriMinutes;
     this.currentAlertOverdueMinutes = 0;
+    this.isAlerting = false;
+
+    NotificationService.cancelScheduledNotification(this.activeTask.id);
 
     const endedAt = new Date().toISOString();
     const completed: Task = {
@@ -439,6 +455,8 @@ export class FocusTimerService {
     if (!this.activeTask) return;
     this.activeTask.status = 'cancelled';
     this.activeTask.ended_at = new Date().toISOString();
+    NotificationService.cancelScheduledNotification(this.activeTask.id);
+    this.isAlerting = false;
     await saveTask(this.activeTask);
     this.stopLoop();
     this.activeTask = null;

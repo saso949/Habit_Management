@@ -91,9 +91,12 @@ export class TaskFormModal {
               <input type="date" id="scheduled-date-input" value="${defaultDateStr}" />
               <input type="time" id="scheduled-start-input" value="${defaultStartTimeStr}" />
             </div>
-            <div style="font-size: 0.76rem; color: var(--accent-cyan); display: flex; align-items: center; gap: 4px; margin-top: 2px;">
+            <div style="font-size: 0.76rem; color: var(--accent-cyan); display: flex; align-items: flex-start; gap: 6px; margin-top: 2px; line-height: 1.3;">
               <span>🔔</span>
-              <span>開始時刻にベストエフォートでシステム通知を送信します</span>
+              <span>
+                開始時刻にベストエフォートでシステム通知を送信します<br>
+                <span style="color: var(--text-muted); font-size: 0.7rem;">(※ iPhone/iOS の場合は「ホーム画面に追加」でのみ通知が機能します)</span>
+              </span>
             </div>
           </div>
 
@@ -175,7 +178,8 @@ export class TaskFormModal {
 
       if (type === 'scheduled') {
         // Request notification permission immediately on choosing scheduled reservation
-        await NotificationService.requestPermission();
+        // Do not await to ensure Safari registers it as part of the direct user click gesture
+        NotificationService.requestPermission();
       }
     };
 
@@ -245,7 +249,7 @@ export class TaskFormModal {
 
       if (currentType === 'scheduled') {
         // Request notification permission simultaneously
-        await NotificationService.requestPermission();
+        NotificationService.requestPermission();
 
         const dateVal = scheduledDateInput.value || defaultDateStr; // "YYYY-MM-DD"
         const timeVal = scheduledTimeInput.value || defaultStartTimeStr; // "HH:MM"
