@@ -86,7 +86,7 @@ export class SoundService {
   }
 
   /**
-   * Play Check-in Alarm Pulse (High-attention alternating tone)
+   * Play Check-in Alarm Pulse (High-intensity emergency siren + rapid alarm bursts)
    */
   static async playCheckinAlarm(): Promise<void> {
     const settings = await getSettings();
@@ -99,33 +99,59 @@ export class SoundService {
         const ctx = await this.getAudioContext();
         const now = ctx.currentTime;
         const masterGain = ctx.createGain();
-        masterGain.gain.setValueAtTime(settings.sound_volume * 0.4, now);
+        masterGain.gain.setValueAtTime(settings.sound_volume * 0.55, now);
         masterGain.connect(ctx.destination);
 
-        // Two rapid high-pitched beeps
-        [880, 1046.5].forEach((freq, idx) => {
-          const osc = ctx.createOscillator();
+        // Pattern: 3 rapid high-pitched piercing bursts followed by an alternating siren sweep
+        const burstNotes = [987.77, 1318.51, 987.77, 1318.51];
+        burstNotes.forEach((freq, idx) => {
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
           const noteGain = ctx.createGain();
-          osc.type = 'square';
-          osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+
+          osc1.type = 'sawtooth';
+          osc1.frequency.setValueAtTime(freq, now + idx * 0.12);
+
+          osc2.type = 'square';
+          osc2.frequency.setValueAtTime(freq * 1.01, now + idx * 0.12); // subtle detune for dissonance
 
           noteGain.gain.setValueAtTime(0, now + idx * 0.12);
-          noteGain.gain.linearRampToValueAtTime(0.5, now + idx * 0.12 + 0.01);
+          noteGain.gain.linearRampToValueAtTime(0.7, now + idx * 0.12 + 0.015);
           noteGain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + 0.1);
 
-          osc.connect(noteGain);
+          osc1.connect(noteGain);
+          osc2.connect(noteGain);
           noteGain.connect(masterGain);
 
-          osc.start(now + idx * 0.12);
-          osc.stop(now + idx * 0.12 + 0.12);
+          osc1.start(now + idx * 0.12);
+          osc1.stop(now + idx * 0.12 + 0.11);
+          osc2.start(now + idx * 0.12);
+          osc2.stop(now + idx * 0.12 + 0.11);
         });
+
+        // Sustained siren sweep at end of pulse
+        const sweepOsc = ctx.createOscillator();
+        const sweepGain = ctx.createGain();
+        sweepOsc.type = 'triangle';
+        sweepOsc.frequency.setValueAtTime(700, now + 0.5);
+        sweepOsc.frequency.exponentialRampToValueAtTime(1400, now + 0.85);
+
+        sweepGain.gain.setValueAtTime(0, now + 0.5);
+        sweepGain.gain.linearRampToValueAtTime(0.5, now + 0.52);
+        sweepGain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+
+        sweepOsc.connect(sweepGain);
+        sweepGain.connect(masterGain);
+
+        sweepOsc.start(now + 0.5);
+        sweepOsc.stop(now + 0.92);
       } catch (err) {
-        console.warn('Play alarm pulse failed:', err);
+        console.warn('Play intense alarm pulse failed:', err);
       }
     };
 
     await playSinglePulse();
-    this.alarmInterval = window.setInterval(playSinglePulse, 2000);
+    this.alarmInterval = window.setInterval(playSinglePulse, 1200);
   }
 
   /**

@@ -1,13 +1,16 @@
 /**
  * High-Priority Periodic Check-in Intervention Modal (Section 3.3)
+ * Features intense visual strobes, high-urgency alarm, and push/system notifications
  */
 
 import type { Task } from '../db/types';
 import { FocusTimerService } from '../services/timer';
 import { CameraModal } from './CameraModal';
+import { NotificationService } from '../services/notification';
 
 export class CheckinModal {
   private static modalEl: HTMLElement | null = null;
+  private static hasSentInitialNotification = false;
 
   static open(task: Task, overdueSeconds: number): void {
     if (this.modalEl) {
@@ -19,18 +22,24 @@ export class CheckinModal {
     const mountPoint = document.getElementById('checkin-container');
     if (!mountPoint) return;
 
+    // Send high-priority system notification
+    if (!this.hasSentInitialNotification) {
+      this.hasSentInitialNotification = true;
+      NotificationService.sendCheckinAlertNotification(task, overdueSeconds > 0);
+    }
+
     const overlay = document.createElement('div');
     overlay.className = 'checkin-alert-overlay';
     overlay.id = 'active-checkin-alert-modal';
 
     overlay.innerHTML = `
-      <div style="font-size: 0.8rem; font-weight: 700; color: var(--accent-danger); letter-spacing: 0.1em; text-transform: uppercase;">
-        ⚡ 認知科学的定期チェックイン介入
+      <div class="checkin-urgent-header-badge">
+        🚨 認知科学的定期介入: 作業確認
       </div>
 
       <div class="checkin-alert-center">
         <div class="checkin-alert-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
             <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
           </svg>
@@ -38,27 +47,27 @@ export class CheckinModal {
 
         <div class="checkin-alert-title">作業を継続していますか？</div>
         <div class="checkin-alert-desc">
-          「${task.title}」の定期確認です。応答して集中状態を維持しましょう。
+          「<strong>${task.title}</strong>」の定期チェックインです。<br>今すぐ応答して集中状態を確定させてください。
         </div>
 
         <!-- Penalty / On-time Status Box -->
         <div class="checkin-penalty-timer" id="checkin-status-box">
-          <div style="font-size: 0.78rem; color: var(--text-secondary);" id="checkin-status-heading">オンタイム受付中 (10分以内)</div>
+          <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary);" id="checkin-status-heading">オンタイム受付中 (10分以内)</div>
           <div class="checkin-penalty-val" id="checkin-penalty-number" style="color: var(--accent-success);">オンタイム (サボり0分)</div>
-          <div style="font-size: 0.72rem; color: var(--text-muted);" id="checkin-status-sub">10分を超過するとサボり時間に加算されます</div>
+          <div style="font-size: 0.74rem; color: var(--text-muted);" id="checkin-status-sub">※ 10分を超過するとサボり時間に加算されます</div>
         </div>
       </div>
 
       <div class="checkin-actions-stack">
-        <button class="btn btn-primary btn-lg btn-full" id="checkin-ok-btn">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <button class="btn btn-primary btn-lg btn-full" id="checkin-ok-btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); font-size: 1.1rem; box-shadow: 0 0 24px rgba(16, 185, 129, 0.7);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
           <span>作業継続中 (OK)</span>
         </button>
 
-        <button class="btn btn-secondary btn-full" id="checkin-photo-btn">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button class="btn btn-secondary btn-full" id="checkin-photo-btn" style="border: 2px solid rgba(255, 255, 255, 0.3); background: rgba(30, 40, 60, 0.85); font-size: 0.95rem;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
             <circle cx="12" cy="13" r="4"></circle>
           </svg>
@@ -112,11 +121,12 @@ export class CheckinModal {
       heading.style.color = 'var(--text-secondary)';
       val.textContent = 'オンタイム (サボり0分)';
       val.style.color = 'var(--accent-success)';
-      sub.textContent = '10分を超過するとサボり時間に加算されます';
+      sub.textContent = '※ 10分を超過するとサボり時間に加算されます';
     }
   }
 
   static close(): void {
+    this.hasSentInitialNotification = false;
     if (this.modalEl) {
       this.modalEl.remove();
       this.modalEl = null;

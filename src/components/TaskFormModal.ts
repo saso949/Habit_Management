@@ -1,5 +1,6 @@
 /**
  * Task Creation & Reservation Modal (Section 3.1)
+ * Automatically requests Notification permission on scheduled reservations
  */
 
 import { getSettings, saveTask } from '../db/db';
@@ -7,6 +8,7 @@ import type { Task, TaskType, FullscreenMode, TaskPhoto } from '../db/types';
 import { CameraModal } from './CameraModal';
 import { FocusTimerService } from '../services/timer';
 import { formatLocalDate } from '../utils/date';
+import { NotificationService } from '../services/notification';
 
 export interface TaskFormOptions {
   initialType?: TaskType;
@@ -89,6 +91,10 @@ export class TaskFormModal {
               <input type="date" id="scheduled-date-input" value="${defaultDateStr}" />
               <input type="time" id="scheduled-start-input" value="${defaultStartTimeStr}" />
             </div>
+            <div style="font-size: 0.76rem; color: var(--accent-cyan); display: flex; align-items: center; gap: 4px; margin-top: 2px;">
+              <span>🔔</span>
+              <span>開始時刻にベストエフォートでシステム通知を送信します</span>
+            </div>
           </div>
 
           <!-- Duration Selector -->
@@ -133,7 +139,7 @@ export class TaskFormModal {
           <!-- Submit Button -->
           <div style="margin-top: 10px;">
             <button type="submit" class="btn btn-primary btn-lg btn-full" id="task-submit-btn">
-              ${currentType === 'now' ? '📸 写真を撮影して今すぐ開始' : '📅 予約を作成する'}
+              ${currentType === 'now' ? '📸 写真を撮影して今すぐ開始' : '📅 予約を作成する (通知を許可)'}
             </button>
           </div>
         </form>
@@ -160,12 +166,17 @@ export class TaskFormModal {
     closeBtn.addEventListener('click', () => TaskFormModal.close());
 
     // Switch task type
-    const setType = (type: TaskType) => {
+    const setType = async (type: TaskType) => {
       currentType = type;
       typeBtnNow.classList.toggle('active', type === 'now');
       typeBtnScheduled.classList.toggle('active', type === 'scheduled');
       scheduledGroup.style.display = type === 'scheduled' ? 'flex' : 'none';
-      submitBtn.innerHTML = type === 'now' ? '📸 写真を撮影して今すぐ開始' : '📅 予約を作成する';
+      submitBtn.innerHTML = type === 'now' ? '📸 写真を撮影して今すぐ開始' : '📅 予約を作成する (通知を許可)';
+
+      if (type === 'scheduled') {
+        // Request notification permission immediately on choosing scheduled reservation
+        await NotificationService.requestPermission();
+      }
     };
 
     typeBtnNow.addEventListener('click', () => setType('now'));
@@ -233,6 +244,9 @@ export class TaskFormModal {
       let scheduledEndAt = new Date(Date.now() + selectedDuration * 60 * 1000).toISOString();
 
       if (currentType === 'scheduled') {
+        // Request notification permission simultaneously
+        await NotificationService.requestPermission();
+
         const dateVal = scheduledDateInput.value || defaultDateStr; // "YYYY-MM-DD"
         const timeVal = scheduledTimeInput.value || defaultStartTimeStr; // "HH:MM"
         const [year, month, day] = dateVal.split('-').map(Number);
@@ -298,6 +312,12 @@ export class TaskFormModal {
         };
 
         await saveTask(newTask);
+
+        // Schedule best-effort start notification
+        NotificationService.scheduleTaskStartNotification(newTask, () => {
+          window.dispatchEvent(new CustomEvent('task-state-changed'));
+        });
+
         TaskFormModal.close();
         options.onCreated(newTask);
       }

@@ -9,6 +9,7 @@ import { SoundService } from './sound';
 import { HapticService } from './haptic';
 import { WakeLockService } from './wakelock';
 import { AnalyticsService } from './analytics';
+import { NotificationService } from './notification';
 import { formatLocalTimeWithSeconds } from '../utils/date';
 
 export type TimerTickCallback = (state: FocusTimerState) => void;
@@ -160,8 +161,9 @@ export class FocusTimerService {
         this.isAlerting = true;
         this.activeTask.checkin_alert_started_at = new Date().toISOString();
         await saveTask(this.activeTask);
-        SoundService.playCheckinAlarm();
+        await SoundService.playCheckinAlarm();
         HapticService.triggerCheckinAlert();
+        NotificationService.sendCheckinAlertNotification(this.activeTask, false);
       }
 
       // Check if overdue > 10 minutes (600 seconds)
@@ -170,9 +172,16 @@ export class FocusTimerService {
       const gracePeriodMs = 10 * 60 * 1000; // 10 minutes
 
       if (elapsedSinceAlertMs > gracePeriodMs) {
+        const prevOverdueMinutes = this.currentAlertOverdueMinutes;
         checkinOverdueSeconds = Math.round((elapsedSinceAlertMs - gracePeriodMs) / 1000);
         this.currentAlertOverdueMinutes = Math.floor(checkinOverdueSeconds / 60);
         this.activeTask.sabori_minutes = this.baseSaboriMinutes + this.currentAlertOverdueMinutes;
+
+        // When a new minute of delay is incurred, re-trigger alert and notify
+        if (this.currentAlertOverdueMinutes > prevOverdueMinutes) {
+          NotificationService.sendCheckinAlertNotification(this.activeTask, true);
+          HapticService.triggerCheckinAlert();
+        }
       }
 
       this.checkinListeners.forEach((cb) => cb(this.activeTask!, checkinOverdueSeconds));

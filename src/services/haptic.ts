@@ -26,7 +26,7 @@ export class HapticService {
   }
 
   static triggerCheckinAlert(): void {
-    this.vibrate([200, 100, 200, 100, 400, 100, 400]);
+    this.vibrate([300, 80, 300, 80, 500, 100, 500, 100, 800]);
   }
 
   static triggerSuccess(): void {

@@ -7,7 +7,7 @@ import './styles/base.css';
 import './styles/components.css';
 import './styles/focus-mode.css';
 
-import { initDb } from './db/db';
+import { initDb, getAllTasks } from './db/db';
 import { Navbar, type TabId } from './components/Navbar';
 import { DashboardView } from './views/DashboardView';
 import { GalleryView } from './views/GalleryView';
@@ -16,6 +16,7 @@ import { SettingsView } from './views/SettingsView';
 import { FocusTimerService } from './services/timer';
 import { FocusScreen } from './components/FocusScreen';
 import { SoundService } from './services/sound';
+import { NotificationService } from './services/notification';
 
 class App {
   private mainContent: HTMLElement;
@@ -56,6 +57,15 @@ class App {
     const activeTask = await FocusTimerService.resumeIfActive();
     if (activeTask) {
       FocusScreen.mount(activeTask);
+    }
+
+    // 5.1 Schedule best-effort start notifications for all pending scheduled tasks
+    const allTasks = await getAllTasks();
+    const pendingScheduled = allTasks.filter((t) => t.type === 'scheduled' && t.status === 'pending');
+    for (const task of pendingScheduled) {
+      NotificationService.scheduleTaskStartNotification(task, () => {
+        this.renderCurrentView();
+      });
     }
 
     // 6. Global Audio Unlock on first interaction
