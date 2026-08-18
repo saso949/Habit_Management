@@ -1,0 +1,30 @@
+{
+  "name": "CommitHabit - 認知科学的進捗記録",
+  "short_name": "CommitHabit",
+  "description": "時間予約 × 写真撮影コミットメント × 定期チェックインによる認知科学的進捗記録PWAアプリ",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#090a0f",
+  "theme_color": "#090a0f",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

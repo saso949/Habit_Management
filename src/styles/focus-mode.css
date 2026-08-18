@@ -1,0 +1,313 @@
+/* ===================================================================
+   Cognitive Focus Mode & Check-in Intervention Styles
+   =================================================================== */
+
+.focus-screen-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: calc(var(--safe-top) + 20px) 24px calc(var(--safe-bottom) + 20px) 24px;
+  overflow: hidden;
+  user-select: none;
+  touch-action: manipulation;
+  animation: fadeInFocus 0.4s ease-out;
+}
+
+@keyframes fadeInFocus {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* --- Mode 1: Clock Display Mode --- */
+.focus-screen-overlay.mode-clock {
+  background: radial-gradient(circle at 50% 30%, #151a2b 0%, #08090e 70%, #030406 100%);
+  color: #ffffff;
+}
+
+/* --- Mode 2: OLED Pure Dark Mode --- */
+.focus-screen-overlay.mode-dark {
+  background: #000000;
+  color: #555c68;
+}
+
+.focus-screen-overlay.mode-dark .clock-digits,
+.focus-screen-overlay.mode-dark .focus-timer-main {
+  color: #4a5568;
+  text-shadow: none;
+}
+
+.focus-screen-overlay.mode-dark:active {
+  color: #94a3b8;
+}
+
+/* Header Area */
+.focus-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.focus-task-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.focus-task-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  max-width: 260px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.focus-screen-overlay.mode-dark .focus-task-title {
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.focus-mode-toggle-btn {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
+  font-weight: 700;
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Center Stage: Clock & Countdown Ring */
+.focus-center-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin: 20px 0;
+}
+
+.focus-clock-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: min(320px, 80vw);
+  aspect-ratio: 1 / 1;
+}
+
+.focus-progress-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.focus-progress-bg {
+  stroke: rgba(255, 255, 255, 0.06);
+}
+
+.focus-progress-bar {
+  stroke: url(#focusGrad);
+  transition: stroke-dashoffset 0.8s ease;
+  filter: drop-shadow(0 0 10px var(--accent-primary-glow));
+}
+
+.focus-screen-overlay.mode-dark .focus-progress-bar {
+  stroke: #2a3344;
+  filter: none;
+}
+
+.focus-clock-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  text-align: center;
+}
+
+.current-wall-clock {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.focus-timer-main {
+  font-family: var(--font-mono);
+  font-size: clamp(2.8rem, 12vw, 4rem);
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  text-shadow: 0 0 24px rgba(99, 102, 241, 0.4);
+}
+
+.focus-timer-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: 6px;
+}
+
+.focus-checkin-countdown-badge {
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #c7d2fe;
+}
+
+/* Floating Actions Bottom Bar */
+.focus-bottom-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: var(--max-content-width);
+  margin: 0 auto;
+}
+
+.focus-quick-extend-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.extend-pill-btn {
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  transition: all var(--transition-fast);
+}
+
+.extend-pill-btn:hover {
+  background: rgba(99, 102, 241, 0.25);
+  border-color: var(--accent-primary);
+}
+
+.focus-main-actions-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* ===================================================================
+   Check-in High-Intensity Pulse & Intervention Overlay
+   =================================================================== */
+.checkin-alert-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(10, 5, 15, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(var(--safe-top) + 24px) 24px calc(var(--safe-bottom) + 24px) 24px;
+  animation: pulseAlertBorder 1.2s infinite alternate;
+}
+
+@keyframes pulseAlertBorder {
+  0% {
+    box-shadow: inset 0 0 0 6px #6366f1, inset 0 0 40px rgba(99, 102, 241, 0.6);
+  }
+  100% {
+    box-shadow: inset 0 0 0 12px #ef4444, inset 0 0 80px rgba(239, 68, 68, 0.8);
+  }
+}
+
+.checkin-alert-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  margin: auto 0;
+}
+
+.checkin-alert-icon {
+  width: 88px;
+  height: 88px;
+  border-radius: var(--radius-full);
+  background: rgba(239, 68, 68, 0.15);
+  border: 3px solid var(--accent-danger);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-danger);
+  animation: bounceAlert 1s infinite alternate;
+}
+
+@keyframes bounceAlert {
+  from { transform: scale(0.92); }
+  to { transform: scale(1.08); }
+}
+
+.checkin-alert-title {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.checkin-alert-desc {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  max-width: 320px;
+}
+
+.checkin-penalty-timer {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-lg);
+  padding: 14px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.checkin-penalty-val {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--accent-danger);
+}
+
+.checkin-actions-stack {
+  width: 100%;
+  max-width: var(--max-content-width);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
