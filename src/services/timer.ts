@@ -398,6 +398,8 @@ export class FocusTimerService {
     this.activeTask.scheduled_end_at = new Date(newEndMs).toISOString();
     this.hasNotifiedExpiry = false;
 
+    SoundService.stopAlarm(); // Stop expiry alarm when extending time
+
     await saveTask(this.activeTask);
     HapticService.triggerTap();
   }
