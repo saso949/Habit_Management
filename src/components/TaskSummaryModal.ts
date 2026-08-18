@@ -83,25 +83,32 @@ export class TaskSummaryModal {
           </div>
 
           <!-- Stats Grid -->
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
-            <div style="background: var(--bg-tertiary); padding: 12px; border-radius: var(--radius-md); text-align: center;">
-              <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">予約時間</div>
-              <div style="font-family: var(--font-mono); font-size: 1.25rem; font-weight: 800; color: var(--text-primary); margin-top: 2px;">
-                ${scheduledMin}<span style="font-size: 0.75rem; font-weight: 600;">分</span>
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
+            <div style="background: var(--bg-tertiary); padding: 10px 6px; border-radius: var(--radius-md); text-align: center;">
+              <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 600;">予約時間</div>
+              <div style="font-family: var(--font-mono); font-size: 1.15rem; font-weight: 800; color: var(--text-primary); margin-top: 2px;">
+                ${scheduledMin}<span style="font-size: 0.7rem; font-weight: 600;">分</span>
               </div>
             </div>
 
-            <div style="background: var(--bg-tertiary); padding: 12px; border-radius: var(--radius-md); text-align: center;">
-              <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">サボり時間</div>
-              <div style="font-family: var(--font-mono); font-size: 1.25rem; font-weight: 800; color: ${saboriMin > 0 ? 'var(--accent-danger)' : 'var(--text-secondary)'}; margin-top: 2px;">
-                ${saboriMin}<span style="font-size: 0.75rem; font-weight: 600;">分</span>
+            <div style="background: var(--bg-tertiary); padding: 10px 6px; border-radius: var(--radius-md); text-align: center;">
+              <div style="font-size: 0.68rem; color: #6ee7b7; font-weight: 600;">☕ 休憩</div>
+              <div style="font-family: var(--font-mono); font-size: 1.15rem; font-weight: 800; color: #6ee7b7; margin-top: 2px;">
+                ${Math.floor((task.break_seconds || ((task.break_minutes || 0) * 60)) / 60)}<span style="font-size: 0.7rem; font-weight: 600;">分</span>${(task.break_seconds || 0) % 60 > 0 ? `${(task.break_seconds || 0) % 60}<span style="font-size: 0.6rem;">秒</span>` : ''}
               </div>
             </div>
 
-            <div style="background: var(--bg-tertiary); padding: 12px; border-radius: var(--radius-md); text-align: center;">
-              <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">純集中時間</div>
-              <div style="font-family: var(--font-mono); font-size: 1.25rem; font-weight: 800; color: var(--accent-success); margin-top: 2px;">
-                ${actualMin}<span style="font-size: 0.75rem; font-weight: 600;">分</span>
+            <div style="background: var(--bg-tertiary); padding: 10px 6px; border-radius: var(--radius-md); text-align: center;">
+              <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 600;">サボり</div>
+              <div style="font-family: var(--font-mono); font-size: 1.15rem; font-weight: 800; color: ${saboriMin > 0 ? 'var(--accent-danger)' : 'var(--text-secondary)'}; margin-top: 2px;">
+                ${saboriMin}<span style="font-size: 0.7rem; font-weight: 600;">分</span>
+              </div>
+            </div>
+
+            <div style="background: var(--bg-tertiary); padding: 10px 6px; border-radius: var(--radius-md); text-align: center;">
+              <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 600;">純集中</div>
+              <div style="font-family: var(--font-mono); font-size: 1.15rem; font-weight: 800; color: var(--accent-success); margin-top: 2px;">
+                ${actualMin}<span style="font-size: 0.7rem; font-weight: 600;">分</span>
               </div>
             </div>
           </div>

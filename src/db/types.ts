@@ -25,6 +25,8 @@ export interface Task {
   actual_start_at: string | null;
   ended_at: string | null;
   sabori_minutes: number;
+  break_seconds?: number; // Valid rest/break seconds (not counted as sabori, part of execution)
+  break_minutes?: number; // Legacy
   status: TaskStatus;
   last_checkin_at?: string | null;
   checkin_alert_started_at?: string | null;
@@ -48,6 +50,7 @@ export interface AppSettings {
   default_checkin_interval: number;
   default_fullscreen_mode: FullscreenMode;
   tags_list: string[];
+  last_break_duration_seconds?: number; // Last used break duration preference
 }
 
 export interface DailySummary {

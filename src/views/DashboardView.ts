@@ -6,6 +6,7 @@ import { getTasksForDate, getStreaks, deleteTask } from '../db/db';
 import type { Task, TaskPhoto } from '../db/types';
 import { AnalyticsService } from '../services/analytics';
 import { FocusTimerService } from '../services/timer';
+import { SoundService } from '../services/sound';
 import { TaskFormModal } from '../components/TaskFormModal';
 import { FocusScreen } from '../components/FocusScreen';
 import { CameraModal } from '../components/CameraModal';
@@ -231,6 +232,7 @@ export class DashboardView {
           <div class="task-tags-group">
             <span class="tag-badge">${task.tag}</span>
             <span class="status-badge completed">完了</span>
+            ${task.break_minutes ? `<span class="tag-badge" style="background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border-color: rgba(16, 185, 129, 0.3);">☕ 休憩 ${task.break_minutes}分</span>` : ''}
           </div>
           ${saboriMin > 0 ? `<span class="sabori-badge">サボり ${saboriMin}分</span>` : ''}
         </div>
@@ -305,6 +307,7 @@ export class DashboardView {
     // Start Scheduled Task via Camera
     this.container.querySelectorAll('.start-scheduled-task-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {
+        SoundService.stopAlarm(); // Stop any due alarm immediately
         const taskId = (e.currentTarget as HTMLElement).dataset.id;
         const task = scheduledTasks.find((t) => t.id === taskId);
         if (!task) return;

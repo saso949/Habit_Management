@@ -1,6 +1,6 @@
 /**
  * Task Focus Timer and Check-in Lifecycle Service
- * Handles state ticks, check-in detection, sabori tracking, extensions, and session completion
+ * Handles state ticks, check-in detection, break mode (up to 15m/hour quota), sabori tracking, extensions, and session completion
  */
 
 import { saveTask, getActiveRunningTask } from '../db/db';
@@ -10,7 +10,7 @@ import { HapticService } from './haptic';
 import { WakeLockService } from './wakelock';
 import { AnalyticsService } from './analytics';
 import { NotificationService } from './notification';
-import { formatLocalTimeWithSeconds } from '../utils/date';
+import { formatLocalTimeWithSeconds, diffInMinutes } from '../utils/date';
 
 export type TimerTickCallback = (state: FocusTimerState) => void;
 export type CheckinAlertCallback = (task: Task, overdueSeconds: number) => void;
@@ -27,6 +27,14 @@ export interface FocusTimerState {
   secondsUntilNextCheckin: number;
   checkinOverdueSeconds: number;
   isSessionExpired: boolean;
+
+  // Break Mode Fields (15m per 1h quota)
+  isBreakMode: boolean;
+  breakSecondsRemaining: number;
+  breakDurationSeconds: number;
+  availableBreakSecondsQuota: number;
+  totalBreakSecondsUsed: number;
+  isBreakFinishedAlerting: boolean;
 }
 
 export class FocusTimerService {
@@ -42,13 +50,24 @@ export class FocusTimerService {
   private static baseSaboriMinutes = 0;
   private static currentAlertOverdueMinutes = 0;
 
+  // Break Mode Management
+  private static isBreakMode = false;
+  private static breakEndTimestampMs: number | null = null;
+  private static breakDurationSeconds = 0;
+  private static breakStartTimestampMs = 0;
+  private static isBreakFinishedAlerting = false;
+
   /**
    * Start or resume running a task
    */
   static async startTask(task: Task): Promise<void> {
     this.activeTask = task;
     this.activeTask.status = 'running';
+    this.activeTask.break_seconds = this.activeTask.break_seconds || ((this.activeTask.break_minutes || 0) * 60);
     this.hasNotifiedExpiry = false;
+    this.isBreakMode = false;
+    this.breakEndTimestampMs = null;
+    this.isBreakFinishedAlerting = false;
 
     if (!this.activeTask.actual_start_at) {
       this.activeTask.actual_start_at = new Date().toISOString();
@@ -72,6 +91,7 @@ export class FocusTimerService {
 
     await saveTask(this.activeTask);
     await WakeLockService.requestWakeLock();
+    SoundService.stopAlarm();
     await SoundService.playStartChime();
     HapticService.triggerStart();
 
@@ -85,9 +105,13 @@ export class FocusTimerService {
     const running = await getActiveRunningTask();
     if (running) {
       this.activeTask = running;
+      this.activeTask.break_seconds = running.break_seconds || ((running.break_minutes || 0) * 60);
       this.baseSaboriMinutes = running.sabori_minutes || 0;
       this.currentAlertOverdueMinutes = 0;
       this.hasNotifiedExpiry = false;
+      this.isBreakMode = false;
+      this.breakEndTimestampMs = null;
+      this.isBreakFinishedAlerting = false;
 
       await WakeLockService.requestWakeLock();
       this.startLoop();
@@ -98,6 +122,84 @@ export class FocusTimerService {
 
   static getActiveTask(): Task | null {
     return this.activeTask;
+  }
+
+  /**
+   * Calculate maximum allowed break quota (15 min per 60 min scheduled) in seconds
+   */
+  static calculateMaxBreakSeconds(task: Task): number {
+    const totalScheduledMinutes = diffInMinutes(task.scheduled_start_at, task.scheduled_end_at);
+    return Math.max(5 * 60, Math.round((totalScheduledMinutes / 60) * 15 * 60));
+  }
+
+  /**
+   * Get available break seconds remaining for this task
+   */
+  static getAvailableBreakSeconds(): number {
+    if (!this.activeTask) return 0;
+    const maxQuota = this.calculateMaxBreakSeconds(this.activeTask);
+    const used = this.activeTask.break_seconds || ((this.activeTask.break_minutes || 0) * 60);
+    return Math.max(0, maxQuota - used);
+  }
+
+  /**
+   * Start a valid break session (15m per 1h rule, not counted as sabori)
+   */
+  static async startBreak(requestedSeconds?: number): Promise<boolean> {
+    if (!this.activeTask || this.isBreakMode) return false;
+
+    const availableQuota = this.getAvailableBreakSeconds();
+    if (availableQuota <= 0) return false;
+
+    const breakSeconds = Math.min(requestedSeconds || availableQuota, availableQuota);
+    if (breakSeconds <= 0) return false;
+
+    this.isBreakMode = true;
+    this.breakDurationSeconds = breakSeconds;
+    this.breakStartTimestampMs = Date.now();
+    this.breakEndTimestampMs = this.breakStartTimestampMs + this.breakDurationSeconds * 1000;
+
+    // Silence any active check-in alert
+    if (this.isAlerting) {
+      this.isAlerting = false;
+      SoundService.stopAlarm();
+    }
+
+    await SoundService.playStartChime();
+    HapticService.triggerTap();
+
+    await this.tick();
+    return true;
+  }
+
+  /**
+   * Resume focus session from break mode
+   */
+  static async resumeFromBreak(): Promise<void> {
+    if (!this.activeTask || !this.isBreakMode) return;
+
+    this.isBreakFinishedAlerting = false;
+    SoundService.stopAlarm();
+
+    const now = Date.now();
+    const elapsedSeconds = Math.max(0, Math.round((now - this.breakStartTimestampMs) / 1000));
+
+    // Add used break time to task.break_seconds (part of execution, not sabori)
+    this.activeTask.break_seconds = (this.activeTask.break_seconds || ((this.activeTask.break_minutes || 0) * 60)) + elapsedSeconds;
+    this.activeTask.break_minutes = Math.round(this.activeTask.break_seconds / 60); // Keep sync for legacy/display
+    this.isBreakMode = false;
+    this.breakEndTimestampMs = null;
+    this.breakDurationSeconds = 0;
+
+    // Reset checkin anchor so user gets a full fresh interval from resumption
+    this.activeTask.last_checkin_at = new Date().toISOString();
+    this.activeTask.checkin_alert_started_at = null;
+
+    await saveTask(this.activeTask);
+    await SoundService.playStartChime();
+    HapticService.triggerSuccess();
+
+    await this.tick();
   }
 
   static addTickListener(cb: TimerTickCallback): () => void {
@@ -146,7 +248,27 @@ export class FocusTimerService {
 
     const wallClockString = formatLocalTimeWithSeconds();
 
-    // Checkin interval calculation
+    let breakSecondsRemaining = 0;
+
+    // Handle Break Mode
+    if (this.isBreakMode && this.breakEndTimestampMs) {
+      breakSecondsRemaining = Math.max(0, Math.round((this.breakEndTimestampMs - now) / 1000));
+
+      // Break time finished
+      if (breakSecondsRemaining <= 0) {
+        if (!this.isBreakFinishedAlerting) {
+          this.isBreakFinishedAlerting = true;
+          await SoundService.playCheckinAlarm();
+          HapticService.triggerCheckinAlert();
+          NotificationService.sendNotification('☕【休憩終了】集中を再開しましょう！', {
+            body: `「${this.activeTask.title}」の休憩時間が終了しました。今すぐ集中モードを再開してください。`,
+            requireInteraction: true,
+          });
+        }
+      }
+    }
+
+    // Checkin interval calculation (Paused during break mode)
     const intervalMinutes = this.activeTask.checkin_interval_minutes || 25;
     const intervalMs = intervalMinutes * 60 * 1000;
     const lastCheckinMs = new Date(this.activeTask.last_checkin_at || this.activeTask.actual_start_at || new Date().toISOString()).getTime();
@@ -155,8 +277,8 @@ export class FocusTimerService {
 
     let checkinOverdueSeconds = 0;
 
-    // Check if check-in trigger condition is met
-    if (msSinceLastCheckin >= intervalMs) {
+    // Check if check-in trigger condition is met (only when NOT resting)
+    if (!this.isBreakMode && msSinceLastCheckin >= intervalMs) {
       if (!this.isAlerting) {
         this.isAlerting = true;
         this.activeTask.checkin_alert_started_at = new Date().toISOString();
@@ -188,6 +310,7 @@ export class FocusTimerService {
     }
 
     const isExpired = remainingSeconds <= 0;
+    const availableBreakSeconds = this.getAvailableBreakSeconds();
 
     const state: FocusTimerState = {
       task: this.activeTask,
@@ -200,12 +323,19 @@ export class FocusTimerService {
       secondsUntilNextCheckin,
       checkinOverdueSeconds,
       isSessionExpired: isExpired,
+
+      isBreakMode: this.isBreakMode,
+      breakSecondsRemaining,
+      breakDurationSeconds: this.breakDurationSeconds,
+      availableBreakSecondsQuota: availableBreakSeconds,
+      totalBreakSecondsUsed: this.activeTask.break_seconds || ((this.activeTask.break_minutes || 0) * 60),
+      isBreakFinishedAlerting: this.isBreakFinishedAlerting,
     };
 
     this.tickListeners.forEach((cb) => cb(state));
 
     // Check if scheduled end time reached and notify once
-    if (isExpired && !this.isAlerting && !this.hasNotifiedExpiry) {
+    if (isExpired && !this.isAlerting && !this.isBreakMode && !this.hasNotifiedExpiry) {
       this.hasNotifiedExpiry = true;
       this.expiredListeners.forEach((cb) => cb(this.activeTask!));
     }
@@ -264,6 +394,10 @@ export class FocusTimerService {
   static async completeTask(photoDataUrl?: string): Promise<Task | null> {
     if (!this.activeTask) return null;
 
+    if (this.isBreakMode) {
+      await this.resumeFromBreak();
+    }
+
     // Finalize any active alert overdue
     this.baseSaboriMinutes += this.currentAlertOverdueMinutes;
     this.activeTask.sabori_minutes = this.baseSaboriMinutes;
@@ -274,6 +408,8 @@ export class FocusTimerService {
       ...this.activeTask,
       status: 'completed',
       ended_at: endedAt,
+      break_seconds: this.activeTask.break_seconds || ((this.activeTask.break_minutes || 0) * 60),
+      break_minutes: this.activeTask.break_minutes || 0,
       photos: [...(this.activeTask.photos || [])],
     };
 

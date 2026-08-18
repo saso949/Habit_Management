@@ -43,6 +43,27 @@
   color: #94a3b8;
 }
 
+/* --- Mode 3: Calming Break Mode --- */
+.focus-screen-overlay.mode-break {
+  background: radial-gradient(circle at 50% 35%, #0d2824 0%, #061513 60%, #020807 100%);
+  color: #a7f3d0;
+  animation: breakCalmBreathe 4s infinite alternate ease-in-out;
+}
+
+@keyframes breakCalmBreathe {
+  0% {
+    box-shadow: inset 0 0 40px rgba(16, 185, 129, 0.2);
+  }
+  100% {
+    box-shadow: inset 0 0 100px rgba(6, 182, 212, 0.35);
+  }
+}
+
+.focus-screen-overlay.mode-break .focus-timer-main {
+  color: #6ee7b7;
+  text-shadow: 0 0 24px rgba(16, 185, 129, 0.5);
+}
+
 /* Header Area */
 .focus-header {
   display: flex;
@@ -215,8 +236,35 @@
 
 .focus-main-actions-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  grid-template-columns: 1fr 1fr 1.2fr;
+  gap: 8px;
+}
+
+.break-pill-btn {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #6ee7b7;
+}
+
+.break-pill-btn:hover {
+  background: rgba(16, 185, 129, 0.3);
+  border-color: var(--accent-success);
+}
+
+.break-pill-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: var(--border-subtle);
+  color: var(--text-dim);
+}
+
+.focus-break-resume-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  font-size: 1.1rem;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 24px rgba(16, 185, 129, 0.5);
 }
 
 /* ===================================================================

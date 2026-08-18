@@ -13,6 +13,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   default_checkin_interval: 25,
   default_fullscreen_mode: 'clock',
   tags_list: DEFAULT_TAGS,
+  last_break_duration_seconds: 900, // Default to 15 minutes
 };
 
 export const INITIAL_STREAKS: Streaks = {
