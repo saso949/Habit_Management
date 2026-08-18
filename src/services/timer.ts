@@ -45,6 +45,7 @@ export class FocusTimerService {
   private static expiredListeners: Set<TaskExpiredCallback> = new Set();
   private static isAlerting = false;
   private static hasNotifiedExpiry = false;
+  private static isCompleting = false;
 
   // Track base sabori (start delay + completed check-in penalties)
   private static baseSaboriMinutes = 0;
@@ -405,9 +406,11 @@ export class FocusTimerService {
    * Complete active task
    */
   static async completeTask(photoDataUrl?: string): Promise<Task | null> {
-    if (!this.activeTask) return null;
+    if (!this.activeTask || this.isCompleting) return null;
+    this.isCompleting = true;
 
-    if (this.isBreakMode) {
+    try {
+      if (this.isBreakMode) {
       await this.resumeFromBreak();
     }
 
@@ -445,7 +448,10 @@ export class FocusTimerService {
     await SoundService.playCompleteChime();
     HapticService.triggerSuccess();
 
-    return completed;
+      return completed;
+    } finally {
+      this.isCompleting = false;
+    }
   }
 
   /**

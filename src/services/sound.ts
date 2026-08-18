@@ -8,6 +8,7 @@ import { getSettings } from '../db/db';
 export class SoundService {
   private static ctx: AudioContext | null = null;
   private static alarmInterval: number | null = null;
+  private static alarmActive = false;
 
   private static async getAudioContext(): Promise<AudioContext> {
     if (!this.ctx) {
@@ -89,10 +90,21 @@ export class SoundService {
    * Play Check-in Alarm Pulse (High-intensity emergency siren + rapid alarm bursts)
    */
   static async playCheckinAlarm(): Promise<void> {
+    this.alarmActive = true; // Set synchronously before any await
     const settings = await getSettings();
-    if (!settings.sound_enabled) return;
+    
+    // If stopAlarm was called during await getSettings, abort
+    if (!settings.sound_enabled || !this.alarmActive) {
+      this.alarmActive = false;
+      return;
+    }
 
-    this.stopAlarm();
+    // Stop any existing intervals before proceeding
+    if (this.alarmInterval !== null) {
+      clearInterval(this.alarmInterval);
+      this.alarmInterval = null;
+    }
+    this.alarmActive = true;
 
     const playSinglePulse = async () => {
       try {
@@ -151,13 +163,16 @@ export class SoundService {
     };
 
     await playSinglePulse();
-    this.alarmInterval = window.setInterval(playSinglePulse, 1200);
+    if (this.alarmActive) {
+      this.alarmInterval = window.setInterval(playSinglePulse, 1200);
+    }
   }
 
   /**
    * Stop recurring check-in alarm
    */
   static stopAlarm(): void {
+    this.alarmActive = false;
     if (this.alarmInterval !== null) {
       clearInterval(this.alarmInterval);
       this.alarmInterval = null;
