@@ -1,6 +1,6 @@
 // Type definitions strictly matching Section 4 of the PoC requirements specification
 
-export type TaskType = 'now' | 'scheduled';
+export type TaskType = 'now' | 'scheduled' | 'short';
 export type FullscreenMode = 'clock' | 'dark';
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'cancelled';
 export type PhotoType = 'start' | 'checkin' | 'end';

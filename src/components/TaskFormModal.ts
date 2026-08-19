@@ -61,9 +61,12 @@ export class TaskFormModal {
 
         <form id="task-create-form" class="modal-body">
           <!-- Type Switcher -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: var(--bg-secondary); padding: 4px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; background: var(--bg-secondary); padding: 4px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
             <button type="button" class="pill-option ${currentType === 'now' ? 'active' : ''}" id="type-btn-now" style="border: none;">
               ⚡ 今すぐ開始
+            </button>
+            <button type="button" class="pill-option ${currentType === 'short' ? 'active' : ''}" id="type-btn-short" style="border: none;">
+              ⏱️ 短期実行
             </button>
             <button type="button" class="pill-option ${currentType === 'scheduled' ? 'active' : ''}" id="type-btn-scheduled" style="border: none;">
               📅 事前予約
@@ -104,12 +107,7 @@ export class TaskFormModal {
           <div class="form-group">
             <label class="form-label">予約時間 (分数)</label>
             <div class="pill-selector-grid" id="duration-selector-grid">
-              ${[15, 25, 30, 45, 60, 90, 120]
-                .map(
-                  (m) =>
-                    `<button type="button" class="pill-option ${m === selectedDuration ? 'active' : ''}" data-duration="${m}">${m}分</button>`
-                )
-                .join('')}
+              <!-- Rendered dynamically -->
             </div>
           </div>
 
@@ -142,7 +140,7 @@ export class TaskFormModal {
           <!-- Submit Button -->
           <div style="margin-top: 10px;">
             <button type="submit" class="btn btn-primary btn-lg btn-full" id="task-submit-btn">
-              ${currentType === 'now' ? '📸 写真を撮影して今すぐ開始' : '📅 予約を作成する (通知を許可)'}
+              <!-- Rendered dynamically -->
             </button>
           </div>
         </form>
@@ -156,14 +154,42 @@ export class TaskFormModal {
     const form = modalEl.querySelector('#task-create-form') as HTMLFormElement;
     const titleInput = modalEl.querySelector('#task-title-input') as HTMLInputElement;
     const typeBtnNow = modalEl.querySelector('#type-btn-now') as HTMLButtonElement;
+    const typeBtnShort = modalEl.querySelector('#type-btn-short') as HTMLButtonElement;
     const typeBtnScheduled = modalEl.querySelector('#type-btn-scheduled') as HTMLButtonElement;
     const scheduledGroup = modalEl.querySelector('#scheduled-time-group') as HTMLElement;
     const scheduledDateInput = modalEl.querySelector('#scheduled-date-input') as HTMLInputElement;
     const scheduledTimeInput = modalEl.querySelector('#scheduled-start-input') as HTMLInputElement;
+    const durationGrid = modalEl.querySelector('#duration-selector-grid') as HTMLElement;
     const submitBtn = modalEl.querySelector('#task-submit-btn') as HTMLButtonElement;
     const closeBtn = modalEl.querySelector('#task-form-close') as HTMLButtonElement;
     const modeBtnClock = modalEl.querySelector('#mode-btn-clock') as HTMLButtonElement;
     const modeBtnDark = modalEl.querySelector('#mode-btn-dark') as HTMLButtonElement;
+
+    // Helper to render durations
+    const renderDurations = () => {
+      const options = currentType === 'short' ? [5, 10, 15, 20] : [15, 25, 30, 45, 60, 90, 120];
+      if (currentType === 'short' && selectedDuration > 20) selectedDuration = 20;
+      if (!options.includes(selectedDuration)) selectedDuration = options[0];
+
+      durationGrid.innerHTML = options
+        .map(
+          (m) =>
+            `<button type="button" class="pill-option ${m === selectedDuration ? 'active' : ''}" data-duration="${m}">${m}分</button>`
+        )
+        .join('');
+
+      // Bind duration events
+      durationGrid.querySelectorAll('.pill-option').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          const dur = Number((e.currentTarget as HTMLElement).dataset.duration);
+          if (dur) {
+            selectedDuration = dur;
+            durationGrid.querySelectorAll('.pill-option').forEach((el) => el.classList.remove('active'));
+            (e.currentTarget as HTMLElement).classList.add('active');
+          }
+        });
+      });
+    };
 
     // Close modal
     closeBtn.addEventListener('click', () => TaskFormModal.close());
@@ -172,9 +198,19 @@ export class TaskFormModal {
     const setType = async (type: TaskType) => {
       currentType = type;
       typeBtnNow.classList.toggle('active', type === 'now');
+      typeBtnShort.classList.toggle('active', type === 'short');
       typeBtnScheduled.classList.toggle('active', type === 'scheduled');
       scheduledGroup.style.display = type === 'scheduled' ? 'flex' : 'none';
-      submitBtn.innerHTML = type === 'now' ? '📸 写真を撮影して今すぐ開始' : '📅 予約を作成する (通知を許可)';
+      
+      if (type === 'now') {
+        submitBtn.innerHTML = '📸 写真を撮影して今すぐ開始';
+      } else if (type === 'short') {
+        submitBtn.innerHTML = '▶️ 写真なしで今すぐ開始';
+      } else {
+        submitBtn.innerHTML = '📅 予約を作成する (通知を許可)';
+      }
+
+      renderDurations();
 
       if (type === 'scheduled') {
         // Request notification permission immediately on choosing scheduled reservation
@@ -183,7 +219,10 @@ export class TaskFormModal {
       }
     };
 
+    setType(currentType);
+
     typeBtnNow.addEventListener('click', () => setType('now'));
+    typeBtnShort.addEventListener('click', () => setType('short'));
     typeBtnScheduled.addEventListener('click', () => setType('scheduled'));
 
     // Tag selector
@@ -198,17 +237,7 @@ export class TaskFormModal {
       });
     });
 
-    // Duration selector
-    modalEl.querySelectorAll('#duration-selector-grid .pill-option').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        const dur = Number((e.currentTarget as HTMLElement).dataset.duration);
-        if (dur) {
-          selectedDuration = dur;
-          modalEl.querySelectorAll('#duration-selector-grid .pill-option').forEach((el) => el.classList.remove('active'));
-          (e.currentTarget as HTMLElement).classList.add('active');
-        }
-      });
-    });
+    // Duration selector logic moved to renderDurations
 
     // Checkin interval selector
     modalEl.querySelectorAll('#checkin-selector-grid .pill-option').forEach((btn) => {
@@ -297,6 +326,28 @@ export class TaskFormModal {
             options.onCreated(newTask);
           },
         });
+      } else if (currentType === 'short') {
+        // Short task starts immediately without a photo
+        const newTask: Task = {
+          id: taskId,
+          type: 'short',
+          title,
+          tag: selectedTag,
+          checkin_interval_minutes: selectedCheckinInterval,
+          fullscreen_mode: selectedMode,
+          scheduled_start_at: scheduledStartAt,
+          scheduled_end_at: scheduledEndAt,
+          actual_start_at: new Date().toISOString(),
+          ended_at: null,
+          sabori_minutes: 0,
+          status: 'running',
+          last_checkin_at: new Date().toISOString(),
+          photos: [],
+        };
+
+        await FocusTimerService.startTask(newTask);
+        TaskFormModal.close();
+        options.onCreated(newTask);
       } else {
         // Scheduled task
         const newTask: Task = {

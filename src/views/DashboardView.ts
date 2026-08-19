@@ -114,6 +114,14 @@ export class DashboardView {
             <span>今すぐ開始</span>
           </button>
 
+          <button class="btn btn-secondary btn-lg" id="hero-short-start-btn" style="background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border-color: rgba(16, 185, 129, 0.4);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span>短期実行</span>
+          </button>
+
           <button class="btn btn-secondary btn-lg" id="hero-schedule-btn">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -281,6 +289,22 @@ export class DashboardView {
       nowStartBtn.addEventListener('click', () => {
         TaskFormModal.open({
           initialType: 'now',
+          onCreated: (task) => {
+            if (task.status === 'running') {
+              FocusScreen.mount(task);
+            }
+            this.render();
+          },
+        });
+      });
+    }
+
+    // Short Start Button
+    const shortStartBtn = this.container.querySelector('#hero-short-start-btn');
+    if (shortStartBtn) {
+      shortStartBtn.addEventListener('click', () => {
+        TaskFormModal.open({
+          initialType: 'short',
           onCreated: (task) => {
             if (task.status === 'running') {
               FocusScreen.mount(task);
