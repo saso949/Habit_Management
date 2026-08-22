@@ -23,6 +23,32 @@ export class AnalyticsService {
   }
 
   /**
+   * Calculate pure focus minutes accurately by separating start delay sabori from check-in sabori
+   */
+  static calculatePureFocusMinutes(task: Task): number {
+    let startDelaySaboriMin = 0;
+    if (task.type === 'scheduled' && task.actual_start_at) {
+      const scheduledStartMs = new Date(task.scheduled_start_at).getTime();
+      const actualStartMs = new Date(task.actual_start_at).getTime();
+      const delayMs = actualStartMs - scheduledStartMs;
+      const gracePeriodMs = 10 * 60 * 1000;
+      if (delayMs > gracePeriodMs) {
+        startDelaySaboriMin = Math.floor((delayMs - gracePeriodMs) / (60 * 1000));
+      }
+    }
+
+    const checkinSaboriMin = Math.max(0, (task.sabori_minutes || 0) - startDelaySaboriMin);
+
+    let actualDurationMin = this.calculateDurationMinutes(task.scheduled_start_at, task.scheduled_end_at);
+    if (task.status === 'completed' && task.ended_at) {
+      actualDurationMin = this.calculateDurationMinutes(task.actual_start_at || task.scheduled_start_at, task.ended_at);
+    }
+    
+    const breakMin = task.break_minutes || Math.floor((task.break_seconds || 0) / 60);
+    return Math.max(0, actualDurationMin - checkinSaboriMin - breakMin);
+  }
+
+  /**
    * Calculate summary for a specific date (Defaults to today)
    */
   static async getDailySummary(dateStr: string = this.getLocalDateString()): Promise<DailySummary> {
@@ -35,15 +61,20 @@ export class AnalyticsService {
     let totalSaboriMinutes = 0;
     let photosCount = 0;
 
+    let totalActualMinutes = 0;
+
     for (const task of validTasks) {
       const taskScheduledMin = this.calculateDurationMinutes(task.scheduled_start_at, task.scheduled_end_at);
       totalScheduledMinutes += taskScheduledMin;
       totalSaboriMinutes += task.sabori_minutes || 0;
       photosCount += (task.photos || []).length;
-    }
 
-    // Pure actual focus minutes: sum(scheduled - sabori)
-    const totalActualMinutes = Math.max(0, totalScheduledMinutes - totalSaboriMinutes);
+      let actualDuration = taskScheduledMin;
+      if (task.status === 'completed' && task.ended_at) {
+        actualDuration = this.calculateDurationMinutes(task.actual_start_at || task.scheduled_start_at, task.ended_at);
+      }
+      totalActualMinutes += this.calculatePureFocusMinutes(task);
+    }
 
     // Execution rate percentage = (actual / scheduled) * 100
     const executionRatePercentage =
@@ -82,7 +113,7 @@ export class AnalyticsService {
       if (task.status === 'completed' || task.status === 'running') {
         const dateKey = formatLocalDate(task.actual_start_at || task.scheduled_start_at);
         const hasStartPhoto = (task.photos || []).some((p) => p.type === 'start');
-        const netMinutes = this.calculateDurationMinutes(task.scheduled_start_at, task.scheduled_end_at) - (task.sabori_minutes || 0);
+        const netMinutes = this.calculatePureFocusMinutes(task);
 
         if (dateKey && hasStartPhoto && netMinutes >= 1) {
           dateAchievementMap.set(dateKey, true);

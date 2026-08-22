@@ -27,7 +27,7 @@ export class TaskSummaryModal {
 
     const scheduledMin = AnalyticsService.calculateDurationMinutes(task.scheduled_start_at, task.scheduled_end_at);
     const saboriMin = task.sabori_minutes || 0;
-    const actualMin = Math.max(0, scheduledMin - saboriMin);
+    const actualMin = AnalyticsService.calculatePureFocusMinutes(task);
     const executionRate = scheduledMin > 0 ? Math.round((actualMin / scheduledMin) * 100) : 100;
 
     const streaks = await AnalyticsService.refreshStreaks();

@@ -230,7 +230,7 @@ export class DashboardView {
   private renderCompletedTaskCard(task: Task): string {
     const scheduledMin = diffInMinutes(task.scheduled_start_at, task.scheduled_end_at);
     const saboriMin = task.sabori_minutes || 0;
-    const actualMin = Math.max(0, scheduledMin - saboriMin);
+    const actualMin = AnalyticsService.calculatePureFocusMinutes(task);
 
     const photos = task.photos || [];
 

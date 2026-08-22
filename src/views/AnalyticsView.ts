@@ -30,7 +30,7 @@ export class AnalyticsView {
       if (task.status === 'completed') {
         const schedMin = AnalyticsService.calculateDurationMinutes(task.scheduled_start_at, task.scheduled_end_at);
         const saboriMin = task.sabori_minutes || 0;
-        const actualMin = Math.max(0, schedMin - saboriMin);
+        const actualMin = AnalyticsService.calculatePureFocusMinutes(task);
 
         totalScheduledLifetime += schedMin;
         totalSaboriLifetime += saboriMin;
